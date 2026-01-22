@@ -1,113 +1,78 @@
-pdfjsLib.GlobalWorkerOptions.workerSrc =
-  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+let currentTool = null;
+let selectedFile = null;
 
-const fileInput = document.getElementById('fileInput');
-const canvas = document.getElementById('pdfCanvas');
-const ctx = canvas.getContext('2d');
-const prevBtn = document.getElementById('prev');
-const nextBtn = document.getElementById('next');
-const zoomInBtn = document.getElementById('zoomIn');
-const zoomOutBtn = document.getElementById('zoomOut');
-const pageInfo = document.getElementById('pageInfo');
-const thumbnails = document.getElementById('thumbnails');
-const status = document.getElementById('fileStatus');
-const darkToggle = document.getElementById('darkToggle');
-const convertBtn = document.querySelector('.convert-btn');
-const dropArea = document.getElementById('drop-area');
+const dropzone = document.getElementById("dropzone");
+const fileInput = document.getElementById("fileInput");
+const convertBtn = document.getElementById("convertBtn");
+const statusText = document.getElementById("status");
+const dropText = document.getElementById("dropText");
+const toolTitle = document.getElementById("toolTitle");
 
-let pdfDoc = null, pageNum = 1, scale = 1.2, currentFile = null;
-
-function renderPage(num) {
-  pdfDoc.getPage(num).then(page => {
-    const viewport = page.getViewport({ scale });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    page.render({ canvasContext: ctx, viewport });
-    pageInfo.textContent = `Page ${pageNum} / ${pdfDoc.numPages}`;
-  });
+function setTool(tool) {
+  currentTool = tool;
+  selectedFile = null;
+  convertBtn.disabled = true;
+  statusText.textContent = "";
+  dropText.textContent = "Glissez votre fichier ici ou cliquez";
+  toolTitle.textContent = tool.replaceAll("/", " ").toUpperCase();
 }
 
-function loadPDF(file) {
-  currentFile = file;
-  status.textContent = `📄 ${file.name}`;
-  thumbnails.innerHTML = '';
-
-  const reader = new FileReader();
-  reader.onload = function () {
-    pdfjsLib.getDocument(new Uint8Array(this.result)).promise.then(pdf => {
-      pdfDoc = pdf; pageNum = 1; renderPage(pageNum);
-      convertBtn.disabled = false;
-
-      for (let i = 1; i <= pdf.numPages; i++) {
-        pdf.getPage(i).then(page => {
-          const viewport = page.getViewport({ scale: 0.22 });
-          const thumbCanvas = document.createElement('canvas');
-          const tctx = thumbCanvas.getContext('2d');
-          thumbCanvas.width = viewport.width;
-          thumbCanvas.height = viewport.height;
-          page.render({ canvasContext: tctx, viewport });
-
-          const thumbWrapper = document.createElement('div');
-          thumbWrapper.className = 'thumb';
-          thumbWrapper.onclick = () => { pageNum = i; renderPage(pageNum); };
-          thumbWrapper.appendChild(thumbCanvas);
-          thumbnails.appendChild(thumbWrapper);
-        });
-      }
-    });
-  };
-  reader.readAsArrayBuffer(file);
-}
-
-fileInput.addEventListener('change', e => loadPDF(e.target.files[0]));
-
-// Drag & Drop
-dropArea.addEventListener('dragover', e => { e.preventDefault(); dropArea.classList.add('dragover'); });
-dropArea.addEventListener('dragleave', e => { e.preventDefault(); dropArea.classList.remove('dragover'); });
-dropArea.addEventListener('drop', e => { 
-  e.preventDefault(); 
-  dropArea.classList.remove('dragover');
-  loadPDF(e.dataTransfer.files[0]);
+/* CLICK */
+fileInput.addEventListener("change", () => {
+  if (!fileInput.files.length) return;
+  selectedFile = fileInput.files[0];
+  dropText.textContent = `Fichier sélectionné : ${selectedFile.name}`;
+  convertBtn.disabled = false;
 });
 
-// Navigation
-prevBtn.onclick = () => { if (!pdfDoc || pageNum <= 1) return; pageNum--; renderPage(pageNum); };
-nextBtn.onclick = () => { if (!pdfDoc || pageNum >= pdfDoc.numPages) return; pageNum++; renderPage(pageNum); };
+/* DRAG */
+dropzone.addEventListener("dragover", (e) => {
+  e.preventDefault();
+  dropzone.classList.add("dragover");
+});
 
-// Zoom
-zoomInBtn.onclick = () => { if (!pdfDoc) return; scale += 0.2; renderPage(pageNum); };
-zoomOutBtn.onclick = () => { if (!pdfDoc || scale <= 0.6) return; scale -= 0.2; renderPage(pageNum); };
+dropzone.addEventListener("dragleave", () => {
+  dropzone.classList.remove("dragover");
+});
 
-// Dark mode
-darkToggle.onclick = () => document.body.classList.toggle('dark');
+dropzone.addEventListener("drop", (e) => {
+  e.preventDefault();
+  dropzone.classList.remove("dragover");
 
-// Convert PDF -> Word via backend en ligne
-convertBtn.onclick = async () => {
-  if (!currentFile) return;
-  convertBtn.textContent = '⏳ Conversion en cours...'; convertBtn.disabled = true;
+  if (!e.dataTransfer.files.length) return;
+
+  selectedFile = e.dataTransfer.files[0];
+  fileInput.files = e.dataTransfer.files;
+  dropText.textContent = `Fichier déposé : ${selectedFile.name}`;
+  convertBtn.disabled = false;
+});
+
+/* CONVERT */
+convertBtn.addEventListener("click", async () => {
+  if (!selectedFile || !currentTool) return;
+
+  statusText.textContent = "Conversion en cours…";
 
   const formData = new FormData();
-  formData.append('file', currentFile);
+  formData.append("file", selectedFile);
 
   try {
-    const response = await fetch('https://umbrella-tools.onrender.com/convert/pdf-to-word', {
-      method:'POST', body:formData
-    });
+    const res = await fetch(
+      `https://umbrella-tools.onrender.com/${currentTool}`,
+      { method: "POST", body: formData }
+    );
 
-    if (!response.ok) throw new Error('Erreur lors de la conversion');
+    if (!res.ok) throw new Error();
 
-    const blob = await response.blob();
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = currentFile.name.replace(/\.pdf$/i, '.docx');
-    document.body.appendChild(a); a.click(); a.remove();
-    window.URL.revokeObjectURL(url);
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "umbrella-converted";
+    a.click();
 
-    convertBtn.textContent = 'PDF → Word';
-  } catch(err) {
-    alert(err.message);
-    convertBtn.textContent = 'PDF → Word';
-  } finally { convertBtn.disabled = false; }
-};
+    statusText.textContent = "Conversion terminée ✔";
+  } catch {
+    statusText.textContent = "Erreur serveur ❌";
+  }
+});
 
