@@ -1,68 +1,47 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Umbrella PDF Reader & Converter</title>
-  <link rel="stylesheet" href="style.css">
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <meta charset="UTF-8" />
+  <title>Umbrella – PDF Tools</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="wrapper">
 
-    <!-- Sidebar -->
-    <aside class="sidebar">
-      <div class="logo">
-        <img src="https://i.postimg.cc/MGXwDDmH/Moniteo-removebg-preview.png" alt="Umbrella Logo">
-      </div>
-      <h2>Umbrella Tools</h2>
-      <ul>
-        <li class="active">PDF Reader</li>
-        <li>PDF → Word</li>
-        <li>Word → PDF</li>
-        <li>Autres outils</li>
-      </ul>
-      <button id="darkToggle">🌙 Dark Mode</button>
-    </aside>
+<div class="app">
 
-    <!-- Main content -->
-    <main>
-      <header>
-        <h1>PDF Reader & Converter</h1>
-      </header>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <img src="https://i.postimg.cc/MGXwDDmH/Moniteo-removebg-preview.png" />
+    </div>
 
-      <!-- Upload / Drag & Drop -->
-      <section class="upload-section" id="drop-area">
-        <p>Glisse ton PDF ici ou clique pour sélectionner</p>
-        <input type="file" id="fileInput" accept="application/pdf">
-        <span id="fileStatus">Aucun fichier chargé</span>
-      </section>
+    <ul class="tools">
+      <li onclick="setTool('convert/pdf-to-word')">PDF → Word</li>
+      <li onclick="setTool('convert/word-to-pdf')">Word → PDF</li>
+      <li onclick="setTool('convert/images-to-pdf')">Images → PDF</li>
+      <li onclick="setTool('convert/pdf-to-images')">PDF → Images</li>
+    </ul>
+  </aside>
 
-      <!-- Bouton convert séparé -->
-      <div class="convert-section">
-        <button type="button" class="convert-btn" disabled>PDF → Word</button>
-      </div>
+  <!-- MAIN -->
+  <main class="main">
+    <h1 id="toolTitle">Choisissez un outil</h1>
 
-      <!-- PDF viewer -->
-      <section class="pdf-section">
-        <div class="canvas-container">
-          <canvas id="pdfCanvas"></canvas>
-        </div>
+    <div id="dropzone">
+      <p id="dropText">Glissez votre fichier ici ou cliquez</p>
+      <input type="file" id="fileInput" />
+    </div>
 
-        <div class="controls">
-          <button id="prev">⬅ Prev</button>
-          <button id="next">Next ➡</button>
-          <button id="zoomOut">➖ Zoom</button>
-          <button id="zoomIn">➕ Zoom</button>
-          <span id="pageInfo">Page 0 / 0</span>
-        </div>
+    <button id="convertBtn" class="convert-btn" disabled>
+      Convertir
+    </button>
 
-        <div id="thumbnails" class="thumbnails"></div>
-      </section>
-    </main>
-  </div>
+    <p id="status" class="status"></p>
+  </main>
 
-  <script src="script.js"></script>
+</div>
+
+<script src="script.js"></script>
 </body>
 </html>
 
