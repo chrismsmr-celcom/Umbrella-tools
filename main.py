@@ -11,10 +11,11 @@ from PIL import Image
 from pdf2image import convert_from_path
 
 # ======================
-# APP CONFIG
+# CONFIG APP
 # ======================
 app = FastAPI()
 
+# Autoriser CORS pour front-end Umbrella
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -24,7 +25,6 @@ app.add_middleware(
 
 TMP_DIR = "/tmp"
 
-
 def safe_remove(path: str):
     if os.path.exists(path):
         os.remove(path)
@@ -33,10 +33,7 @@ def safe_remove(path: str):
 # PDF → WORD
 # ======================
 @app.post("/convert/pdf-to-word")
-async def pdf_to_word(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
-):
+async def pdf_to_word(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     uid = str(uuid.uuid4())
     pdf_path = f"{TMP_DIR}/{uid}.pdf"
     docx_path = f"{TMP_DIR}/{uid}.docx"
@@ -56,15 +53,11 @@ async def pdf_to_word(
 
     return FileResponse(docx_path, filename="pdf-to-word.docx")
 
-
 # ======================
 # WORD → PDF
 # ======================
 @app.post("/convert/word-to-pdf")
-async def word_to_pdf(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
-):
+async def word_to_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     uid = str(uuid.uuid4())
     docx_path = f"{TMP_DIR}/{uid}.docx"
     pdf_path = f"{TMP_DIR}/{uid}.pdf"
@@ -82,15 +75,11 @@ async def word_to_pdf(
 
     return FileResponse(pdf_path, filename="word-to-pdf.pdf")
 
-
 # ======================
 # IMAGES → PDF
 # ======================
 @app.post("/convert/images-to-pdf")
-async def images_to_pdf(
-    background_tasks: BackgroundTasks,
-    files: list[UploadFile] = File(...)
-):
+async def images_to_pdf(background_tasks: BackgroundTasks, files: list[UploadFile] = File(...)):
     images = []
 
     for file in files:
@@ -114,15 +103,11 @@ async def images_to_pdf(
 
     return FileResponse(pdf_path, filename="images-to-pdf.pdf")
 
-
 # ======================
 # PDF → IMAGES (ZIP)
 # ======================
 @app.post("/convert/pdf-to-images")
-async def pdf_to_images(
-    background_tasks: BackgroundTasks,
-    file: UploadFile = File(...)
-):
+async def pdf_to_images(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     uid = str(uuid.uuid4())
     pdf_path = f"{TMP_DIR}/{uid}.pdf"
     zip_path = f"{TMP_DIR}/{uid}.zip"
