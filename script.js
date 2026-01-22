@@ -81,7 +81,7 @@ zoomOutBtn.onclick = () => { if (!pdfDoc || scale <= 0.6) return; scale -= 0.2; 
 // Dark mode
 darkToggle.onclick = () => document.body.classList.toggle('dark');
 
-// Convert PDF -> Word
+// Convert PDF -> Word via backend en ligne
 convertBtn.onclick = async () => {
   if (!currentFile) return;
   convertBtn.textContent = '⏳ Conversion en cours...'; convertBtn.disabled = true;
@@ -90,7 +90,7 @@ convertBtn.onclick = async () => {
   formData.append('file', currentFile);
 
   try {
-    const response = await fetch('http://127.0.0.1:8000/convert/pdf-to-word', {
+    const response = await fetch('https://umbrella-tools.onrender.com/convert/pdf-to-word', {
       method:'POST', body:formData
     });
 
@@ -101,10 +101,13 @@ convertBtn.onclick = async () => {
     const a = document.createElement('a');
     a.href = url;
     a.download = currentFile.name.replace(/\.pdf$/i, '.docx');
-    document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(url);
+    document.body.appendChild(a); a.click(); a.remove();
+    window.URL.revokeObjectURL(url);
 
     convertBtn.textContent = 'PDF → Word';
   } catch(err) {
-    alert(err.message); convertBtn.textContent = 'PDF → Word';
+    alert(err.message);
+    convertBtn.textContent = 'PDF → Word';
   } finally { convertBtn.disabled = false; }
 };
+
