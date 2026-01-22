@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Umbrella PDF Reader & Converter</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+</head>
+<body>
+  <div class="wrapper">
+
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="logo">
+        <img src="https://i.postimg.cc/MGXwDDmH/Moniteo-removebg-preview.png" alt="Umbrella Logo">
+      </div>
+      <h2>Umbrella Tools</h2>
+      <ul>
+        <li class="active">PDF Reader</li>
+        <li>PDF → Word</li>
+        <li>Word → PDF</li>
+        <li>Autres outils</li>
+      </ul>
+      <button id="darkToggle">🌙 Dark Mode</button>
+    </aside>
+
+    <!-- Main content -->
+    <main>
+      <header>
+        <h1>PDF Reader & Converter</h1>
+      </header>
+
+      <!-- Upload / Drag & Drop -->
+      <section class="upload-section" id="drop-area">
+        <p>Glisse ton PDF ici ou clique pour sélectionner</p>
+        <input type="file" id="fileInput" accept="application/pdf">
+        <span id="fileStatus">Aucun fichier chargé</span>
+        <button type="button" class="convert-btn" disabled>PDF → Word</button>
+      </section>
+
+      <!-- PDF viewer -->
+      <section class="pdf-section">
+        <div class="canvas-container">
+          <canvas id="pdfCanvas"></canvas>
+        </div>
+
+        <div class="controls">
+          <button id="prev">⬅ Prev</button>
+          <button id="next">Next ➡</button>
+          <button id="zoomOut">➖ Zoom</button>
+          <button id="zoomIn">➕ Zoom</button>
+          <span id="pageInfo">Page 0 / 0</span>
+        </div>
+
+        <div id="thumbnails" class="thumbnails"></div>
+      </section>
+    </main>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+/* Reset & font */
+* {margin:0; padding:0; box-sizing:border-box; font-family:'Montserrat',sans-serif;}
+body {display:flex; height:100vh; width:100vw; overflow:hidden; background:#f3f4f6; color:#1f2937; transition:0.3s;}
+
+/* Dark mode */
+body.dark {background:#1e1e1e; color:#f3f4f6;}
+body.dark .sidebar {background:#111;}
+body.dark button, body.dark .controls {background:#333; color:#f3f4f6;}
+
+/* Wrapper */
+.wrapper {display:flex; width:100%; height:100%;}
+
+/* Sidebar */
+.sidebar {width:250px; background:#1f2937; color:#fff; padding:20px; display:flex; flex-direction:column; flex-shrink:0;}
+.sidebar .logo {text-align:center; margin-bottom:15px;}
+.sidebar .logo img {width:150px; height:auto;}
+.sidebar h2 {margin-bottom:15px; text-align:center;}
+.sidebar ul {list-style:none; flex-grow:1;}
+.sidebar li {padding:10px 0; cursor:pointer; border-radius:5px; margin-bottom:5px; transition:0.2s;}
+.sidebar li.active, .sidebar li:hover {background:#374151;}
+.sidebar button {margin-top:auto; padding:10px; border:none; cursor:pointer; border-radius:5px; transition:0.2s;}
+
+/* Main */
+main {flex-grow:1; display:flex; flex-direction:column; padding:20px; overflow:hidden;}
+header h1 {margin-bottom:20px; text-align:center;}
+
+/* Upload section */
+.upload-section {border:2px dashed #9ca3af; padding:40px; border-radius:10px; text-align:center; margin-bottom:20px; position:relative; cursor:pointer; transition:0.3s; display:flex; flex-direction:column; justify-content:center; align-items:center; height:200px;}
+.upload-section.dragover {background:#e5e7eb;}
+.upload-section input[type=file] {position:absolute; top:0; left:0; width:100%; height:100%; opacity:0; cursor:pointer;}
+.convert-btn {margin-top:10px; padding:10px 20px; cursor:pointer; border:none; border-radius:5px; background:#2563eb; color:#fff; transition:0.3s;}
+.convert-btn:disabled {background:#9ca3af; cursor:not-allowed;}
+
+/* PDF viewer */
+.pdf-section {flex-grow:1; display:flex; flex-direction:column; overflow:auto;}
+.canvas-container {flex-grow:1; overflow:auto; border:1px solid #ccc; border-radius:10px; margin-bottom:10px;}
+canvas {width:100%; border-radius:10px;}
+.controls {display:flex; gap:10px; margin-bottom:10px; align-items:center; justify-content:center;}
+.controls button {padding:5px 10px; border:none; cursor:pointer; border-radius:5px; background:#2563eb; color:#fff; transition:0.3s;}
+
+/* Thumbnails */
+.thumbnails {display:flex; gap:5px; overflow-x:auto; margin-top:10px;}
+.thumbnails .thumb {cursor:pointer; border:1px solid #ccc; border-radius:5px; transition:0.2s;}
+.thumbnails .thumb:hover {border-color:#2563eb;}
