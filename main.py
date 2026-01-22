@@ -1,54 +1,148 @@
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pdf2docx import Converter
 import os
+import uuid
+import zipfile
 
-app = FastAPI(title="Umbrella PDF Converter")
+from pdf2docx import Converter
+from docx2pdf import convert
+from PIL import Image
+from pdf2image import convert_from_path
 
-# Autoriser le front en ligne
+# ======================
+# APP CONFIG
+# ======================
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # plus tard, tu peux restreindre à ton front
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Dossier temporaire fixe
-TMP_DIR = "/tmp/umbrella"
-os.makedirs(TMP_DIR, exist_ok=True)
+TMP_DIR = "/tmp"
 
-# Fonction pour supprimer fichiers après envoi
-def cleanup_files(*files):
-    for f in files:
-        try:
-            os.remove(f)
-        except FileNotFoundError:
-            pass
 
-# Endpoint PDF → Word
+def safe_remove(path: str):
+    if os.path.exists(path):
+        os.remove(path)
+
+# ======================
+# PDF → WORD
+# ======================
 @app.post("/convert/pdf-to-word")
-async def convert_pdf_to_word(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    pdf_path = os.path.join(TMP_DIR, file.filename)
-    docx_path = os.path.join(TMP_DIR, file.filename.replace(".pdf", ".docx"))
+async def pdf_to_word(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
+    uid = str(uuid.uuid4())
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+    docx_path = f"{TMP_DIR}/{uid}.docx"
 
-    # Sauvegarde PDF
     with open(pdf_path, "wb") as f:
         f.write(await file.read())
 
-    # Conversion PDF → DOCX
-    try:
-        cv = Converter(pdf_path)
-        cv.convert(docx_path, start=0, end=None)
-        cv.close()
-    except Exception as e:
-        # Nettoyage immédiat si erreur
-        cleanup_files(pdf_path, docx_path)
-        return {"error": str(e)}
+    cv = Converter(pdf_path)
+    cv.convert(docx_path)
+    cv.close()
 
-    # Supprime les fichiers après téléchargement
-    background_tasks.add_task(cleanup_files, pdf_path, docx_path)
+    if not os.path.exists(docx_path):
+        raise RuntimeError("Erreur conversion PDF → Word")
 
-    # Retourner le DOCX
-    return FileResponse(docx_path, filename=file.filename.replace(".pdf", ".docx"))
+    background_tasks.add_task(safe_remove, pdf_path)
+    background_tasks.add_task(safe_remove, docx_path)
+
+    return FileResponse(docx_path, filename="pdf-to-word.docx")
+
+
+# ======================
+# WORD → PDF
+# ======================
+@app.post("/convert/word-to-pdf")
+async def word_to_pdf(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
+    uid = str(uuid.uuid4())
+    docx_path = f"{TMP_DIR}/{uid}.docx"
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+
+    with open(docx_path, "wb") as f:
+        f.write(await file.read())
+
+    convert(docx_path, pdf_path)
+
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("Erreur conversion Word → PDF")
+
+    background_tasks.add_task(safe_remove, docx_path)
+    background_tasks.add_task(safe_remove, pdf_path)
+
+    return FileResponse(pdf_path, filename="word-to-pdf.pdf")
+
+
+# ======================
+# IMAGES → PDF
+# ======================
+@app.post("/convert/images-to-pdf")
+async def images_to_pdf(
+    background_tasks: BackgroundTasks,
+    files: list[UploadFile] = File(...)
+):
+    images = []
+
+    for file in files:
+        img = Image.open(file.file)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        images.append(img)
+
+    if not images:
+        raise RuntimeError("Aucune image reçue")
+
+    uid = str(uuid.uuid4())
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+
+    images[0].save(pdf_path, save_all=True, append_images=images[1:])
+
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("Erreur Images → PDF")
+
+    background_tasks.add_task(safe_remove, pdf_path)
+
+    return FileResponse(pdf_path, filename="images-to-pdf.pdf")
+
+
+# ======================
+# PDF → IMAGES (ZIP)
+# ======================
+@app.post("/convert/pdf-to-images")
+async def pdf_to_images(
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...)
+):
+    uid = str(uuid.uuid4())
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+    zip_path = f"{TMP_DIR}/{uid}.zip"
+
+    with open(pdf_path, "wb") as f:
+        f.write(await file.read())
+
+    images = convert_from_path(pdf_path)
+
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for i, img in enumerate(images, start=1):
+            img_path = f"{TMP_DIR}/page_{i}.png"
+            img.save(img_path, "PNG")
+            zipf.write(img_path, f"page_{i}.png")
+            os.remove(img_path)
+
+    if not os.path.exists(zip_path):
+        raise RuntimeError("Erreur PDF → Images")
+
+    background_tasks.add_task(safe_remove, pdf_path)
+    background_tasks.add_task(safe_remove, zip_path)
+
+    return FileResponse(zip_path, filename="pdf-to-images.zip")
