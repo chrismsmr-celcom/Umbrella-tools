@@ -1,133 +1,66 @@
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-import os
-import uuid
-import zipfile
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const convertBtn = document.getElementById('convert-btn');
+const status = document.getElementById('status');
+let files = [];
+let currentTool = '';
 
-from pdf2docx import Converter
-from docx2pdf import convert
-from PIL import Image
-from pdf2image import convert_from_path
+document.querySelectorAll('.sidebar ul li').forEach(item => {
+    item.addEventListener('click', () => {
+        currentTool = item.dataset.tool;
+        document.getElementById('title').innerText = item.innerText;
+        files = [];
+        convertBtn.disabled = true;
+        status.innerText = '';
+    });
+});
 
-# ======================
-# CONFIG APP
-# ======================
-app = FastAPI()
+dropZone.addEventListener('click', () => fileInput.click());
 
-# Autoriser CORS pour front-end Umbrella
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background='#eee'; });
+dropZone.addEventListener('dragleave', e => { e.preventDefault(); dropZone.style.background='transparent'; });
+dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.style.background='transparent';
+    files = Array.from(e.dataTransfer.files);
+    convertBtn.disabled = files.length===0;
+    status.innerText = `${files.length} fichier(s) sélectionné(s)`;
+});
 
-TMP_DIR = "/tmp"
+fileInput.addEventListener('change', e => {
+    files = Array.from(e.target.files);
+    convertBtn.disabled = files.length===0;
+    status.innerText = `${files.length} fichier(s) sélectionné(s)`;
+});
 
-def safe_remove(path: str):
-    if os.path.exists(path):
-        os.remove(path)
+convertBtn.addEventListener('click', async () => {
+    if (!currentTool || files.length===0) return;
+    const formData = new FormData();
+    if (files.length>1) files.forEach(f => formData.append('files', f));
+    else formData.append('file', files[0]);
 
-# ======================
-# PDF → WORD
-# ======================
-@app.post("/convert/pdf-to-word")
-async def pdf_to_word(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    uid = str(uuid.uuid4())
-    pdf_path = f"{TMP_DIR}/{uid}.pdf"
-    docx_path = f"{TMP_DIR}/{uid}.docx"
+    status.innerText = 'Conversion en cours...';
+    convertBtn.disabled = true;
 
-    with open(pdf_path, "wb") as f:
-        f.write(await file.read())
-
-    cv = Converter(pdf_path)
-    cv.convert(docx_path)
-    cv.close()
-
-    if not os.path.exists(docx_path):
-        raise RuntimeError("Erreur conversion PDF → Word")
-
-    background_tasks.add_task(safe_remove, pdf_path)
-    background_tasks.add_task(safe_remove, docx_path)
-
-    return FileResponse(docx_path, filename="pdf-to-word.docx")
-
-# ======================
-# WORD → PDF
-# ======================
-@app.post("/convert/word-to-pdf")
-async def word_to_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    uid = str(uuid.uuid4())
-    docx_path = f"{TMP_DIR}/{uid}.docx"
-    pdf_path = f"{TMP_DIR}/{uid}.pdf"
-
-    with open(docx_path, "wb") as f:
-        f.write(await file.read())
-
-    convert(docx_path, pdf_path)
-
-    if not os.path.exists(pdf_path):
-        raise RuntimeError("Erreur conversion Word → PDF")
-
-    background_tasks.add_task(safe_remove, docx_path)
-    background_tasks.add_task(safe_remove, pdf_path)
-
-    return FileResponse(pdf_path, filename="word-to-pdf.pdf")
-
-# ======================
-# IMAGES → PDF
-# ======================
-@app.post("/convert/images-to-pdf")
-async def images_to_pdf(background_tasks: BackgroundTasks, files: list[UploadFile] = File(...)):
-    images = []
-
-    for file in files:
-        img = Image.open(file.file)
-        if img.mode != "RGB":
-            img = img.convert("RGB")
-        images.append(img)
-
-    if not images:
-        raise RuntimeError("Aucune image reçue")
-
-    uid = str(uuid.uuid4())
-    pdf_path = f"{TMP_DIR}/{uid}.pdf"
-
-    images[0].save(pdf_path, save_all=True, append_images=images[1:])
-
-    if not os.path.exists(pdf_path):
-        raise RuntimeError("Erreur Images → PDF")
-
-    background_tasks.add_task(safe_remove, pdf_path)
-
-    return FileResponse(pdf_path, filename="images-to-pdf.pdf")
-
-# ======================
-# PDF → IMAGES (ZIP)
-# ======================
-@app.post("/convert/pdf-to-images")
-async def pdf_to_images(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    uid = str(uuid.uuid4())
-    pdf_path = f"{TMP_DIR}/{uid}.pdf"
-    zip_path = f"{TMP_DIR}/{uid}.zip"
-
-    with open(pdf_path, "wb") as f:
-        f.write(await file.read())
-
-    images = convert_from_path(pdf_path)
-
-    with zipfile.ZipFile(zip_path, "w") as zipf:
-        for i, img in enumerate(images, start=1):
-            img_path = f"{TMP_DIR}/page_{i}.png"
-            img.save(img_path, "PNG")
-            zipf.write(img_path, f"page_{i}.png")
-            os.remove(img_path)
-
-    if not os.path.exists(zip_path):
-        raise RuntimeError("Erreur PDF → Images")
-
-    background_tasks.add_task(safe_remove, pdf_path)
-    background_tasks.add_task(safe_remove, zip_path)
-
-    return FileResponse(zip_path, filename="pdf-to-images.zip")
+    try {
+        const res = await fetch(`https://umbrella-tools.onrender.com/convert/${currentTool}`, {
+            method:'POST',
+            body: formData
+        });
+        if (!res.ok) throw new Error('Conversion échouée');
+        const blob = await res.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = files[0].name.replace(/\..+$/, '') + '.' + (currentTool.includes('word')?'docx':'pdf');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+        status.innerText = 'Conversion terminée!';
+    } catch (err) {
+        status.innerText = 'Erreur: '+err.message;
+    } finally {
+        convertBtn.disabled = false;
+    }
+});
