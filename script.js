@@ -1,67 +1,71 @@
-const dropZone = document.getElementById('drop-zone');
-const fileInput = document.getElementById('file-input');
-const convertBtn = document.getElementById('convert-btn');
-const status = document.getElementById('status');
-let files = [];
-let currentTool = '';
-
-document.querySelectorAll('.sidebar ul li').forEach(item => {
-    item.addEventListener('click', () => {
-        currentTool = item.dataset.tool;
-        document.getElementById('title').innerText = item.innerText;
-        files = [];
-        convertBtn.disabled = true;
-        status.innerText = '';
+// Tabs
+const tabs = document.querySelectorAll(".sidebar nav button");
+const contents = document.querySelectorAll(".tab-content");
+tabs.forEach((tab,index)=>{
+    tab.addEventListener("click",()=>{
+        tabs.forEach(t=>t.classList.remove("active"));
+        contents.forEach(c=>c.classList.remove("active"));
+        tab.classList.add("active");
+        contents[index].classList.add("active");
     });
 });
 
-dropZone.addEventListener('click', () => fileInput.click());
+// Elements
+const imagesUpload = document.getElementById("imagesUpload");
+const convertImagesBtn = document.getElementById("convertImagesBtn");
+const downloadImagesPdf = document.getElementById("downloadImagesPdf");
+const imagesPreview = document.getElementById("imagesPreview");
 
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background='#eee'; });
-dropZone.addEventListener('dragleave', e => { e.preventDefault(); dropZone.style.background='transparent'; });
-dropZone.addEventListener('drop', e => {
-    e.preventDefault();
-    dropZone.style.background='transparent';
-    files = Array.from(e.dataTransfer.files);
-    convertBtn.disabled = files.length===0;
-    status.innerText = `${files.length} fichier(s) sélectionné(s)`;
+const pdfUpload = document.getElementById("pdfUpload");
+const convertPdfBtn = document.getElementById("convertPdfBtn");
+const imagesResult = document.getElementById("imagesResult");
+
+const API_URL = "https://umbrella-tools.onrender.com";
+
+// Image Preview before PDF
+imagesUpload.addEventListener("change", ()=>{
+    imagesPreview.innerHTML = "";
+    Array.from(imagesUpload.files).forEach(file=>{
+        const reader = new FileReader();
+        reader.onload = e=>{
+            const img = document.createElement("img");
+            img.src = e.target.result;
+            imagesPreview.appendChild(img);
+        };
+        reader.readAsDataURL(file);
+    });
 });
 
-fileInput.addEventListener('change', e => {
-    files = Array.from(e.target.files);
-    convertBtn.disabled = files.length===0;
-    status.innerText = `${files.length} fichier(s) sélectionné(s)`;
-});
-
-convertBtn.addEventListener('click', async () => {
-    if (!currentTool || files.length===0) return;
+// Images → PDF
+convertImagesBtn.addEventListener("click", async ()=>{
+    if(!imagesUpload.files.length){alert("Sélectionnez des images."); return;}
     const formData = new FormData();
-    if (files.length>1) files.forEach(f => formData.append('files', f));
-    else formData.append('file', files[0]);
-
-    status.innerText = 'Conversion en cours...';
-    convertBtn.disabled = true;
-
-    try {
-        const res = await fetch(`https://umbrella-tools.onrender.com/convert/${currentTool}`, {
-            method:'POST',
-            body: formData
-        });
-        if (!res.ok) throw new Error('Conversion échouée');
+    for(const file of imagesUpload.files) formData.append("files", file);
+    convertImagesBtn.disabled=true; convertImagesBtn.textContent="Conversion...";
+    try{
+        const res = await fetch(`${API_URL}/convert/images-to-pdf`,{method:"POST",body:formData});
+        if(!res.ok) throw new Error("Erreur serveur");
         const blob = await res.blob();
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = files[0].name.replace(/\..+$/, '') + '.' + (currentTool.includes('word')?'docx':'pdf');
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        URL.revokeObjectURL(url);
-        status.innerText = 'Conversion terminée!';
-    } catch (err) {
-        status.innerText = 'Erreur: '+err.message;
-    } finally {
-        convertBtn.disabled = false;
-    }
+        downloadImagesPdf.href=url; downloadImagesPdf.style.display="inline-block";
+    }catch(e){alert(e);}finally{convertImagesBtn.disabled=false;convertImagesBtn.textContent="Convertir en PDF";}
+});
+
+// PDF → Images
+convertPdfBtn.addEventListener("click", async ()=>{
+    if(!pdfUpload.files.length){alert("Sélectionnez un PDF."); return;}
+    const formData = new FormData(); formData.append("file",pdfUpload.files[0]);
+    convertPdfBtn.disabled=true; convertPdfBtn.textContent="Conversion...";
+    try{
+        const res = await fetch(`${API_URL}/convert/pdf-to-images`,{method:"POST",body:formData});
+        if(!res.ok) throw new Error("Erreur serveur");
+        const data = await res.json();
+        imagesResult.innerHTML="";
+        data.images.forEach(img=>{
+            const imageEl=document.createElement("img");
+            imageEl.src=`${API_URL}/${img.replaceAll("\\","/")}`;
+            imagesResult.appendChild(imageEl);
+        });
+    }catch(e){alert(e);}finally{convertPdfBtn.disabled=false; convertPdfBtn.textContent="Convertir en Images";}
 });
 
