@@ -1,47 +1,30 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-  <meta charset="UTF-8" />
-  <title>Umbrella – PDF Tools</title>
-  <link rel="stylesheet" href="style.css" />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Umbrella Tools</title>
+<link rel="stylesheet" href="style.css">
 </head>
 <body>
-
-<div class="app">
-
-  <!-- SIDEBAR -->
-  <aside class="sidebar">
-    <div class="logo">
-      <img src="https://i.postimg.cc/MGXwDDmH/Moniteo-removebg-preview.png" />
-    </div>
-
-    <ul class="tools">
-      <li onclick="setTool('convert/pdf-to-word')">PDF → Word</li>
-      <li onclick="setTool('convert/word-to-pdf')">Word → PDF</li>
-      <li onclick="setTool('convert/images-to-pdf')">Images → PDF</li>
-      <li onclick="setTool('convert/pdf-to-images')">PDF → Images</li>
+<div class="sidebar">
+    <img src="https://i.postimg.cc/MGXwDDmH/Moniteo-removebg-preview.png" class="logo" alt="Umbrella">
+    <ul>
+        <li data-tool="pdf-to-word">PDF → Word</li>
+        <li data-tool="word-to-pdf">Word → PDF</li>
+        <li data-tool="images-to-pdf">Images → PDF</li>
+        <li data-tool="pdf-to-images">PDF → Images</li>
     </ul>
-  </aside>
-
-  <!-- MAIN -->
-  <main class="main">
-    <h1 id="toolTitle">Choisissez un outil</h1>
-
-    <div id="dropzone">
-      <p id="dropText">Glissez votre fichier ici ou cliquez</p>
-      <input type="file" id="fileInput" />
-    </div>
-
-    <button id="convertBtn" class="convert-btn" disabled>
-      Convertir
-    </button>
-
-    <p id="status" class="status"></p>
-  </main>
-
 </div>
-
+<div class="main">
+    <h1 id="title">Sélectionnez un outil</h1>
+    <div id="drop-zone">
+        Glissez vos fichiers ici ou cliquez pour sélectionner
+        <input type="file" id="file-input" multiple>
+    </div>
+    <button id="convert-btn" disabled>Convertir</button>
+    <div id="status"></div>
+</div>
 <script src="script.js"></script>
 </body>
 </html>
-
