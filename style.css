@@ -1,109 +1,46 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-  font-family: Inter, system-ui, sans-serif;
+body, html {
+    margin:0; padding:0; height:100%; font-family:'Montserrat',sans-serif;
+    display:flex; background:#f3f4f6; color:#1f2937;
 }
 
-body {
-  height: 100vh;
-  background: #0f172a;
-  color: #e5e7eb;
-}
-
-.app {
-  display: flex;
-  height: 100vh;
-}
-
-/* SIDEBAR */
 .sidebar {
-  width: 260px;
-  background: #020617;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
+    width:250px; background:#1f2937; color:white; display:flex;
+    flex-direction:column; align-items:center; padding-top:20px;
 }
 
-.logo img {
-  width: 100%;
-  margin-bottom: 30px;
+.sidebar .logo {
+    width:150px; margin-bottom:20px;
 }
 
-.tools {
-  list-style: none;
+.sidebar ul {
+    list-style:none; padding:0; width:100%;
 }
 
-.tools li {
-  padding: 12px;
-  margin-bottom: 10px;
-  border-radius: 8px;
-  cursor: pointer;
-  background: #020617;
+.sidebar ul li {
+    padding:15px 20px; cursor:pointer; border-bottom:1px solid #333;
 }
 
-.tools li:hover {
-  background: #1e293b;
+.sidebar ul li:hover {
+    background:#111; transition:0.2s;
 }
 
-/* MAIN */
 .main {
-  flex: 1;
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
 }
 
-#toolTitle {
-  margin-bottom: 30px;
-  font-size: 26px;
+#drop-zone {
+    width:80%; height:200px; border:2px dashed #999; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    margin-bottom:20px; text-align:center; cursor:pointer;
 }
 
-/* DROPZONE */
-#dropzone {
-  width: 500px;
-  height: 220px;
-  border: 2px dashed #475569;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  margin-bottom: 20px;
+#file-input { display:none; }
+
+#convert-btn {
+    padding:10px 20px; border:none; border-radius:5px; background:#1f2937;
+    color:white; cursor:pointer; font-size:16px;
 }
 
-#dropzone.dragover {
-  background: #020617;
-  border-color: #3b82f6;
-}
+#convert-btn:disabled { background:#999; cursor:not-allowed; }
 
-#fileInput {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.convert-btn {
-  padding: 14px 40px;
-  border-radius: 10px;
-  border: none;
-  background: #2563eb;
-  color: white;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.convert-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.status {
-  margin-top: 15px;
-  font-size: 14px;
-}
-
+#status { margin-top:20px; }
