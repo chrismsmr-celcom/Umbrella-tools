@@ -1,78 +1,133 @@
-let currentTool = null;
-let selectedFile = null;
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+import os
+import uuid
+import zipfile
 
-const dropzone = document.getElementById("dropzone");
-const fileInput = document.getElementById("fileInput");
-const convertBtn = document.getElementById("convertBtn");
-const statusText = document.getElementById("status");
-const dropText = document.getElementById("dropText");
-const toolTitle = document.getElementById("toolTitle");
+from pdf2docx import Converter
+from docx2pdf import convert
+from PIL import Image
+from pdf2image import convert_from_path
 
-function setTool(tool) {
-  currentTool = tool;
-  selectedFile = null;
-  convertBtn.disabled = true;
-  statusText.textContent = "";
-  dropText.textContent = "Glissez votre fichier ici ou cliquez";
-  toolTitle.textContent = tool.replaceAll("/", " ").toUpperCase();
-}
+# ======================
+# CONFIG APP
+# ======================
+app = FastAPI()
 
-/* CLICK */
-fileInput.addEventListener("change", () => {
-  if (!fileInput.files.length) return;
-  selectedFile = fileInput.files[0];
-  dropText.textContent = `Fichier sélectionné : ${selectedFile.name}`;
-  convertBtn.disabled = false;
-});
+# Autoriser CORS pour front-end Umbrella
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
-/* DRAG */
-dropzone.addEventListener("dragover", (e) => {
-  e.preventDefault();
-  dropzone.classList.add("dragover");
-});
+TMP_DIR = "/tmp"
 
-dropzone.addEventListener("dragleave", () => {
-  dropzone.classList.remove("dragover");
-});
+def safe_remove(path: str):
+    if os.path.exists(path):
+        os.remove(path)
 
-dropzone.addEventListener("drop", (e) => {
-  e.preventDefault();
-  dropzone.classList.remove("dragover");
+# ======================
+# PDF → WORD
+# ======================
+@app.post("/convert/pdf-to-word")
+async def pdf_to_word(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    uid = str(uuid.uuid4())
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+    docx_path = f"{TMP_DIR}/{uid}.docx"
 
-  if (!e.dataTransfer.files.length) return;
+    with open(pdf_path, "wb") as f:
+        f.write(await file.read())
 
-  selectedFile = e.dataTransfer.files[0];
-  fileInput.files = e.dataTransfer.files;
-  dropText.textContent = `Fichier déposé : ${selectedFile.name}`;
-  convertBtn.disabled = false;
-});
+    cv = Converter(pdf_path)
+    cv.convert(docx_path)
+    cv.close()
 
-/* CONVERT */
-convertBtn.addEventListener("click", async () => {
-  if (!selectedFile || !currentTool) return;
+    if not os.path.exists(docx_path):
+        raise RuntimeError("Erreur conversion PDF → Word")
 
-  statusText.textContent = "Conversion en cours…";
+    background_tasks.add_task(safe_remove, pdf_path)
+    background_tasks.add_task(safe_remove, docx_path)
 
-  const formData = new FormData();
-  formData.append("file", selectedFile);
+    return FileResponse(docx_path, filename="pdf-to-word.docx")
 
-  try {
-    const res = await fetch(
-      `https://umbrella-tools.onrender.com/${currentTool}`,
-      { method: "POST", body: formData }
-    );
+# ======================
+# WORD → PDF
+# ======================
+@app.post("/convert/word-to-pdf")
+async def word_to_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    uid = str(uuid.uuid4())
+    docx_path = f"{TMP_DIR}/{uid}.docx"
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
 
-    if (!res.ok) throw new Error();
+    with open(docx_path, "wb") as f:
+        f.write(await file.read())
 
-    const blob = await res.blob();
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "umbrella-converted";
-    a.click();
+    convert(docx_path, pdf_path)
 
-    statusText.textContent = "Conversion terminée ✔";
-  } catch {
-    statusText.textContent = "Erreur serveur ❌";
-  }
-});
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("Erreur conversion Word → PDF")
 
+    background_tasks.add_task(safe_remove, docx_path)
+    background_tasks.add_task(safe_remove, pdf_path)
+
+    return FileResponse(pdf_path, filename="word-to-pdf.pdf")
+
+# ======================
+# IMAGES → PDF
+# ======================
+@app.post("/convert/images-to-pdf")
+async def images_to_pdf(background_tasks: BackgroundTasks, files: list[UploadFile] = File(...)):
+    images = []
+
+    for file in files:
+        img = Image.open(file.file)
+        if img.mode != "RGB":
+            img = img.convert("RGB")
+        images.append(img)
+
+    if not images:
+        raise RuntimeError("Aucune image reçue")
+
+    uid = str(uuid.uuid4())
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+
+    images[0].save(pdf_path, save_all=True, append_images=images[1:])
+
+    if not os.path.exists(pdf_path):
+        raise RuntimeError("Erreur Images → PDF")
+
+    background_tasks.add_task(safe_remove, pdf_path)
+
+    return FileResponse(pdf_path, filename="images-to-pdf.pdf")
+
+# ======================
+# PDF → IMAGES (ZIP)
+# ======================
+@app.post("/convert/pdf-to-images")
+async def pdf_to_images(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
+    uid = str(uuid.uuid4())
+    pdf_path = f"{TMP_DIR}/{uid}.pdf"
+    zip_path = f"{TMP_DIR}/{uid}.zip"
+
+    with open(pdf_path, "wb") as f:
+        f.write(await file.read())
+
+    images = convert_from_path(pdf_path)
+
+    with zipfile.ZipFile(zip_path, "w") as zipf:
+        for i, img in enumerate(images, start=1):
+            img_path = f"{TMP_DIR}/page_{i}.png"
+            img.save(img_path, "PNG")
+            zipf.write(img_path, f"page_{i}.png")
+            os.remove(img_path)
+
+    if not os.path.exists(zip_path):
+        raise RuntimeError("Erreur PDF → Images")
+
+    background_tasks.add_task(safe_remove, pdf_path)
+    background_tasks.add_task(safe_remove, zip_path)
+
+    return FileResponse(zip_path, filename="pdf-to-images.zip")
